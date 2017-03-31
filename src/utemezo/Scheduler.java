@@ -1,5 +1,7 @@
 package utemezo;
 
+import java.util.List;
+
 /**
  * Created by marci on 2017.03.31..
  */
@@ -22,4 +24,6 @@ public abstract class Scheduler {
             cycle += tick(cycle);
         }
     }
+
+    protected abstract List<Task> getWaitingTasks(Task runningTask, int cycle);
 }

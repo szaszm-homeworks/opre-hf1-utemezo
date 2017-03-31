@@ -1,17 +1,20 @@
 package utemezo;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by marci on 2017.03.31..
  */
 public class ShortestJobFirstScheduler extends Scheduler {
     boolean done = false;
-    protected ArrayList<Task> tasks;
+    private ArrayList<Task> tasks;
+    private EventDispatcher dispatcher;
 
-    public ShortestJobFirstScheduler() {
+    public ShortestJobFirstScheduler(EventDispatcher dispatcher) {
         super();
         tasks = new ArrayList<>();
+        this.dispatcher = dispatcher;
     }
 
     @Override
@@ -22,7 +25,7 @@ public class ShortestJobFirstScheduler extends Scheduler {
     @Override
     public int tick(int cycle) {
         int cyclesRan = 0;
-        if(done) return cyclesRan;
+        if(done) return 1;
         Task task = null;
         for(Task t: tasks) {
             if(t.isRunning(cycle) && !(task != null && t.getRemainingCycles() >= task.getRemainingCycles())) {
@@ -32,13 +35,19 @@ public class ShortestJobFirstScheduler extends Scheduler {
 
         if(task == null) {
             done = true;
-            return cyclesRan;
+            return 1;
         }
 
         while (!task.isDone()) {
             task.run();
+            dispatcher.dispatch(new TickEvent(task, cycle));
             cyclesRan++;
             cycle++;
+        }
+
+        tasks.remove(task);
+        if(tasks.size() == 0) {
+            done = true;
         }
 
         return cyclesRan;
@@ -55,5 +64,17 @@ public class ShortestJobFirstScheduler extends Scheduler {
             if(task.isRunning(cycle)) return true;
         }
         return false;
+    }
+
+    @Override
+    protected List<Task> getWaitingTasks(Task runningTask, int cycle) {
+        List<Task> waiting = new ArrayList<>();
+        for(Task task: tasks) {
+            if(task.isRunning(cycle) && task != runningTask) {
+                waiting.add(task);
+            }
+        }
+
+        return waiting;
     }
 }

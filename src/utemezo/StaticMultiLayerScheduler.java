@@ -1,5 +1,7 @@
 package utemezo;
 
+import java.util.List;
+
 /**
  * Created by marci on 2017.03.31..
  */
@@ -7,9 +9,18 @@ public class StaticMultiLayerScheduler extends Scheduler implements SchedulingIn
     RoundRobinScheduler roundRobinScheduler;
     ShortestJobFirstScheduler shortestJobFirstScheduler;
 
-    public StaticMultiLayerScheduler(int roundRobinTimeSliceLength) {
-        this.roundRobinScheduler = new RoundRobinScheduler(roundRobinTimeSliceLength, this);
-        this.shortestJobFirstScheduler = new ShortestJobFirstScheduler();
+    public StaticMultiLayerScheduler(int roundRobinTimeSliceLength, EventDispatcher dispatcher) {
+        this.roundRobinScheduler = new RoundRobinScheduler(roundRobinTimeSliceLength, dispatcher, this);
+        this.shortestJobFirstScheduler = new ShortestJobFirstScheduler(dispatcher);
+        dispatcher.listen(TickEvent.class, new EventListener<TickEvent>() {
+            @Override
+            public void handleEvent(TickEvent event) {
+                List<Task> waiting = getWaitingTasks(event.getTask(), event.getCycle());
+                for(Task task: waiting) {
+                    task.waitTick();
+                }
+            }
+        });
     }
 
     @Override
@@ -24,6 +35,14 @@ public class StaticMultiLayerScheduler extends Scheduler implements SchedulingIn
     @Override
     public boolean canRun(int cycle) {
         return shortestJobFirstScheduler.canRun(cycle) || roundRobinScheduler.canRun(cycle);
+    }
+
+    @Override
+    protected List<Task> getWaitingTasks(Task runningTask, int cycle) {
+        List<Task> sjfList = shortestJobFirstScheduler.getWaitingTasks(runningTask, cycle);
+        List<Task> rrList = roundRobinScheduler.getWaitingTasks(runningTask, cycle);
+        sjfList.addAll(rrList);
+        return sjfList;
     }
 
     public void addTask(Task task) {
@@ -41,7 +60,7 @@ public class StaticMultiLayerScheduler extends Scheduler implements SchedulingIn
         } else if(roundRobinScheduler.canRun(cycle)) {
             return roundRobinScheduler.tick(cycle);
         } else {
-            return 0;
+            return 1;
         }
     }
 

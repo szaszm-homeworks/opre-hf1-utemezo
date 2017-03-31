@@ -2,27 +2,30 @@ package utemezo;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 
 /**
  * Created by marci on 2017.03.30..
  */
 public class RoundRobinScheduler extends Scheduler {
+    private final EventDispatcher dispatcher;
     private Queue<Task> runningTasks;
     private int timeSliceLength;
     private SchedulingInformationSource informationSource;
-    protected ArrayList<Task> tasks;
+    private ArrayList<Task> tasks;
 
-    public RoundRobinScheduler(int timeSliceLength) {
-        this(timeSliceLength, null);
+    public RoundRobinScheduler(int timeSliceLength, EventDispatcher dispatcher) {
+        this(timeSliceLength, dispatcher, null);
     }
 
-    public RoundRobinScheduler(int timeSliceLength, SchedulingInformationSource informationSource) {
+    public RoundRobinScheduler(int timeSliceLength, EventDispatcher dispatcher, SchedulingInformationSource informationSource) {
         super();
         tasks = new ArrayList<>();
         runningTasks = new LinkedList<>();
         this.timeSliceLength = timeSliceLength;
         this.informationSource = informationSource;
+        this.dispatcher = dispatcher;
     }
 
     private void syncRunningTasks(int cycle) {
@@ -43,13 +46,14 @@ public class RoundRobinScheduler extends Scheduler {
         int cyclesRan = 0;
 
         if(!canRun(cycle)) {
-            return 0;
+            return 1;
         }
 
         Task task = runningTasks.peek();
 
         do {
             task.run();
+            dispatcher.dispatch(new TickEvent(task, cycle));
             cyclesRan++;
             cycle++;
             syncRunningTasks(cycle);
@@ -78,6 +82,14 @@ public class RoundRobinScheduler extends Scheduler {
 
         Task task = runningTasks.peek();
         return task != null;
+    }
+
+    @Override
+    protected List<Task> getWaitingTasks(Task runningTask, int cycle) {
+        syncRunningTasks(cycle);
+        List<Task> waiting = new LinkedList<>(runningTasks);
+        waiting.remove(runningTask);
+        return waiting;
     }
 
     private boolean shouldInterrupt(Task task, int cycle) {

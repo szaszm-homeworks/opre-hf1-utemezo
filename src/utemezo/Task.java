@@ -8,7 +8,8 @@ public class Task {
     private int startTime;
     private int burstLength;
     private int priority;
-    protected int remainingCycles;
+    private int remainingCycles;
+    private int waitingCycles;
 
     public Task(String id, int priority, int startTime, int burstLength) {
         this.id = id;
@@ -18,7 +19,8 @@ public class Task {
     }
 
     public String toString() {
-        return id + "," + Integer.toString(getPriority()) + "," + startTime + "," + burstLength;
+        //return id + "," + Integer.toString(getPriority()) + "," + startTime + "," + burstLength;
+        return id;
     }
 
     public int getPriority() {
@@ -38,7 +40,14 @@ public class Task {
     }
 
     public void run() {
-        System.out.println(toString()+" ran");
         remainingCycles--;
+    }
+
+    public void waitTick() {
+        waitingCycles++;
+    }
+
+    public int getWaitingCycles() {
+        return waitingCycles;
     }
 }
